@@ -185,7 +185,7 @@ export interface IStorage {
 }
 
 // In-memory storage for development
-class MemoryStorage implements IStorage {
+export class MemoryStorage implements IStorage {
   private users: User[] = [];
   private clients: Client[] = [];
   private bonds: Bond[] = [];
