@@ -242,15 +242,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/admin-login', async (req, res) => {
     try {
       const { email, password, username } = req.body;
-      console.log('Admin login attempt:', { email, username, hasPassword: !!password });
-      
       // Support both email and username login
-      const isValidAdmin = (email === 'admin@alohabailbond.com' || username === 'admin') && password === 'admin123';
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@alohabailbond.com';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+      const isValidAdmin = (email === adminEmail || username === 'admin') && password === adminPassword;
       
       if (isValidAdmin) {
         (req.session as any).adminRole = 'admin';
-        console.log('Admin login successful, session set');
-        
         // Log successful login (temporarily commented out)
         // await logger.logLoginAttempt(true, email || username || 'admin', req.ip || '', req.get('User-Agent') || '');
         
@@ -259,8 +257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: 'admin'
         });
       } else {
-        console.log('Admin login failed - invalid credentials');
-        
         // Log failed login attempt (temporarily commented out)
         // await logger.logLoginAttempt(false, email || username || 'unknown', req.ip || '', req.get('User-Agent') || '');
         // await logger.logSecurityEvent('Failed admin login attempt', 'medium', { email, username, ip: req.ip });
@@ -278,7 +274,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
-      if (email === 'maintenance@alohabailbond.com' && password === 'maint123') {
+      const maintEmail = process.env.MAINTENANCE_EMAIL || 'maintenance@alohabailbond.com';
+      const maintPassword = process.env.MAINTENANCE_PASSWORD || 'maint123';
+      if (email === maintEmail && password === maintPassword) {
         (req.session as any).adminRole = 'maintenance';
         
         res.json({
@@ -299,7 +297,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password, role } = req.body;
       
-      if (email === 'admin@alohabailbond.com' && password === 'admin123' && role === 'admin') {
+      const staffAdminEmail = process.env.ADMIN_EMAIL || 'admin@alohabailbond.com';
+      const staffAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+      if (email === staffAdminEmail && password === staffAdminPassword && role === 'admin') {
         (req.session as any).adminRole = 'admin';
         
         res.json({
@@ -588,7 +588,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Simple password check for production use
-        if (password !== 'client123') {
+        const clientDefaultPassword = process.env.CLIENT_DEFAULT_PASSWORD || 'client123';
+        if (password !== clientDefaultPassword) {
           return res.status(401).json({ message: "Invalid password" });
         }
         
@@ -2048,32 +2049,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/arrest-logs/log-contact', isAuthenticated, async (req, res) => {
     try {
-      const { arrestRecordId, contactType, notes, outcome, contactedBy, followUpRequired, followUpDate } = req.body;
-      
-      // In a real implementation, this would save to the database
+      // Persist contact log to storage
+      const contactLogs = await (storage as any).readJsonFile('arrest-contact-logs.json', []);
       const contactLog = {
-        id: `contact_${Date.now()}`,
-        arrestRecordId,
-        contactType,
-        contactedBy,
-        contactDate: new Date().toISOString(),
-        notes,
-        outcome,
-        followUpRequired,
-        followUpDate
+          id: `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          ...req.body,
+          contactDate: new Date().toISOString(),
+          createdAt: new Date().toISOString()
       };
+      contactLogs.push(contactLog);
+      await (storage as any).writeJsonFile('arrest-contact-logs.json', contactLogs);
 
-      // Update arrest record contact status based on outcome
-      let newContactStatus = 'contacted';
-      if (outcome === 'converted') newContactStatus = 'converted';
-      else if (outcome === 'declined') newContactStatus = 'declined';
-      else if (followUpRequired) newContactStatus = 'follow_up';
+      // Update arrest record contact status if needed
+      if (req.body.outcome === 'converted') {
+          const arrestLogs = await (storage as any).readJsonFile('public-arrest-logs.json', []);
+          const recordIndex = arrestLogs.findIndex((r: any) => r.id === req.body.arrestRecordId);
+          if (recordIndex >= 0) {
+              arrestLogs[recordIndex].contactStatus = 'converted';
+              await (storage as any).writeJsonFile('public-arrest-logs.json', arrestLogs);
+          }
+      }
 
-      res.json({ 
-        success: true, 
-        contactLog,
-        message: 'Contact logged successfully'
-      });
+      res.json({ success: true, contactLog });
     } catch (error) {
       console.error('Error logging contact:', error);
       res.status(500).json({ success: false, message: 'Failed to log contact' });
@@ -2083,12 +2080,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/arrest-logs/update-status', isAuthenticated, async (req, res) => {
     try {
       const { recordId, contactStatus } = req.body;
-      
-      // In a real implementation, this would update the database
-      res.json({ 
-        success: true, 
-        message: 'Contact status updated successfully'
-      });
+      const arrestLogs = await (storage as any).readJsonFile('public-arrest-logs.json', []);
+      const recordIndex = arrestLogs.findIndex((r: any) => r.id === recordId);
+      if (recordIndex >= 0) {
+          arrestLogs[recordIndex].contactStatus = contactStatus;
+          arrestLogs[recordIndex].updatedAt = new Date().toISOString();
+          await (storage as any).writeJsonFile('public-arrest-logs.json', arrestLogs);
+      }
+      res.json({ success: true, recordId, contactStatus });
     } catch (error) {
       console.error('Error updating contact status:', error);
       res.status(500).json({ success: false, message: 'Failed to update contact status' });
@@ -2098,15 +2097,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/arrest-logs/convert-to-client', isAuthenticated, async (req, res) => {
     try {
       const { arrestRecordId } = req.body;
-      
-      // In a real implementation, this would create a new client record
-      // and update the arrest record status to 'converted'
-      
-      res.json({ 
-        success: true, 
-        clientId: `client_${Date.now()}`,
-        message: 'Successfully converted arrest record to client'
-      });
+      const arrestLogs = await (storage as any).readJsonFile('public-arrest-logs.json', []);
+      const record = arrestLogs.find((r: any) => r.id === arrestRecordId);
+
+      if (!record) {
+          return res.status(404).json({ message: 'Arrest record not found' });
+      }
+
+      // Create a new client from the arrest record
+      const newClient = await storage.createClient({
+          fullName: record.name || 'Unknown',
+          clientId: `CLT-${Date.now()}`,
+          status: 'active',
+          charges: Array.isArray(record.charges) ? record.charges.join(', ') : record.charges || '',
+          courtLocation: record.arrestingAgency || '',
+          phoneNumber: record.phoneNumber || '',
+      } as any);
+
+      // Update arrest record status
+      const recordIndex = arrestLogs.findIndex((r: any) => r.id === arrestRecordId);
+      if (recordIndex >= 0) {
+          arrestLogs[recordIndex].contactStatus = 'converted';
+          arrestLogs[recordIndex].convertedClientId = newClient.id;
+          await (storage as any).writeJsonFile('public-arrest-logs.json', arrestLogs);
+      }
+
+      res.json({ success: true, clientId: newClient.id, clientRecord: newClient });
     } catch (error) {
       console.error('Error converting to client:', error);
       res.status(500).json({ success: false, message: 'Failed to convert to client' });
@@ -2707,19 +2723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit system endpoints
   app.get('/api/audit/logs', isAuthenticated, async (req, res) => {
     try {
-      // In a real implementation, this would fetch from audit log storage
-      const auditLogs = [
-        {
-          id: 1,
-          timestamp: new Date().toISOString(),
-          userId: 'admin',
-          action: 'VIEW_CLIENT_DATA',
-          resource: 'clients',
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        }
-      ];
-      
+      const auditLogs = await (storage as any).readJsonFile('audit-logs.json', []);
       res.json(auditLogs);
     } catch (error) {
       console.error("Error fetching audit logs:", error);

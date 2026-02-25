@@ -101,8 +101,7 @@ export function usePrivacyAcknowledgment() {
 
   const getClientIP = async (): Promise<string> => {
     try {
-      // In production, this would be handled by the server
-      return "client-ip-placeholder";
+      return window.location.hostname || 'unknown';
     } catch {
       return "unknown";
     }

@@ -31,7 +31,6 @@ export default function ClientLogin() {
       }
     },
     onSuccess: (data) => {
-      console.log('Login success data:', data);
       queryClient.setQueryData(["/api/auth/user"], data);
       setLocation("/client-dashboard");
       toast({

@@ -157,7 +157,7 @@ export function NotificationCenter() {
     }
     
     if (notification.actionUrl) {
-      console.log('Navigate to:', notification.actionUrl);
+      window.location.href = notification.actionUrl;
     }
   };
 

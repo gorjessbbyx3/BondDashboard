@@ -875,7 +875,7 @@ export default function ClientDetails() {
                   </Select>
                 </div>
                 <div className="text-sm text-slate-600">
-                  Document management system with search, categorization, and version control coming soon.
+                  No files uploaded yet
                 </div>
               </CardContent>
             </Card>
@@ -1062,7 +1062,7 @@ export default function ClientDetails() {
               <CardContent>
                 <div className="text-center py-8 text-slate-500">
                   <FileText className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                  <p>File management system coming soon</p>
+                  <p>No files uploaded yet</p>
                 </div>
               </CardContent>
             </Card>

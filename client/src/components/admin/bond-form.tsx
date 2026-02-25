@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarIcon, DollarSign } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface BondFormData {
   clientId: number;
@@ -31,6 +32,7 @@ interface BondFormProps {
 }
 
 export default function BondForm({ onSubmit, isLoading, clientId }: BondFormProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<BondFormData>({
     clientId,
     bondAmount: "",
@@ -59,7 +61,7 @@ export default function BondForm({ onSubmit, isLoading, clientId }: BondFormProp
     e.preventDefault();
     
     if (!formData.bondAmount || parseFloat(formData.bondAmount) <= 0) {
-      alert("Please enter a valid bond amount");
+      toast({ title: "Validation Error", description: "Please enter a valid bond amount", variant: "destructive" });
       return;
     }
 

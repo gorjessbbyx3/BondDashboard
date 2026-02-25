@@ -800,10 +800,6 @@ export class LocalFileStorage {
     }
   }
 
-  async acknowledgeArrestRecord(id: string): Promise<any> {
-    return { success: true, message: 'Arrest record acknowledged' };
-  }
-
   // Duplicate methods removed - using primary implementations above
 
   async getDashboardStats(): Promise<any> {
@@ -821,44 +817,241 @@ export class LocalFileStorage {
   }
 
   async getClientLocations(): Promise<any[]> {
-    return [];
+    return await this.readJsonFile('client-locations.json', []);
   }
 
-  async getArrestRecords(): Promise<any[]> {
-    return [];
+  // Payment plan operations
+  async getPaymentPlans(bondId?: number): Promise<any[]> {
+    const plans = await this.readJsonFile('payment-plans.json', []);
+    if (bondId !== undefined) {
+      return plans.filter((p: any) => p.bondId === bondId);
+    }
+    return plans;
   }
 
-  // Placeholder methods for missing interface requirements
-  async getPaymentPlans(bondId?: number): Promise<any[]> { return []; }
-  async createPaymentPlan(plan: any): Promise<any> { return plan; }
-  async getPaymentInstallments(planId: number): Promise<any[]> { return []; }
-  async getCollectionsActivities(filters: any): Promise<any[]> { return []; }
-  async createCollectionsActivity(activity: any): Promise<any> { return activity; }
-  async getForfeitures(filters: any): Promise<any[]> { return []; }
-  async createForfeiture(forfeiture: any): Promise<any> { return forfeiture; }
-  async getUserRoles(): Promise<any[]> { return []; }
-  async createUserRole(role: any): Promise<any> { return role; }
-  async getDataBackups(): Promise<any[]> { return []; }
-  async createDataBackup(backup: any): Promise<any> { return backup; }
-  async getUserNotifications(userId: string): Promise<any[]> { return []; }
-  async getUserNotificationPreferences(userId: string): Promise<any> { return {}; }
-  async upsertNotificationPreferences(preferences: any): Promise<any> { return preferences; }
-  async deleteNotification(id: number): Promise<void> { }
-  async checkTermsAcknowledgment(userId: string): Promise<any> { return null; }
-  async acknowledgeTerms(acknowledgment: any): Promise<any> { return acknowledgment; }
-  async getClientVehicles(clientId: number): Promise<any[]> { return []; }
-  async createClientVehicle(vehicle: any): Promise<any> { return vehicle; }
-  async createFamilyMember(family: any): Promise<any> { return family; }
-  async createEmploymentInfo(employment: any): Promise<any> { return employment; }
-  async getClientFiles(clientId: number): Promise<any[]> { return []; }
-  async createCourtDateReminder(reminder: any): Promise<any> { return reminder; }
-  async getCourtDateReminders(): Promise<any[]> { return []; }
-  async acknowledgeReminder(reminderId: string): Promise<any> { return {}; }
-  async getClientApprovedCourtDates(clientId: number): Promise<any[]> { return []; }
-  async getPrivacyAcknowledgment(userId: string): Promise<any> { return null; }
-  async createPrivacyAcknowledgment(acknowledgment: any): Promise<any> { return acknowledgment; }
-  async getClientFamily(clientId: number): Promise<any[]> { return []; }
-  async getClientEmployment(clientId: number): Promise<any[]> { return []; }
+  async createPaymentPlan(plan: any): Promise<any> {
+    const plans = await this.readJsonFile('payment-plans.json', []);
+    const newPlan = { ...plan, id: this.nextId++, createdAt: new Date() };
+    plans.push(newPlan);
+    await this.writeJsonFile('payment-plans.json', plans);
+    await this.saveIndex();
+    return newPlan;
+  }
+
+  async getPaymentInstallments(planId: number): Promise<any[]> {
+    const installments = await this.readJsonFile('payment-installments.json', []);
+    return installments.filter((i: any) => i.planId === planId);
+  }
+
+  // Collections operations
+  async getCollectionsActivities(filters: any): Promise<any[]> {
+    const activities = await this.readJsonFile('collections-activities.json', []);
+    if (!filters) return activities;
+    return activities.filter((a: any) => {
+      if (filters.bondId && a.bondId !== filters.bondId) return false;
+      if (filters.clientId && a.clientId !== filters.clientId) return false;
+      if (filters.status && a.status !== filters.status) return false;
+      return true;
+    });
+  }
+
+  async createCollectionsActivity(activity: any): Promise<any> {
+    const activities = await this.readJsonFile('collections-activities.json', []);
+    const newActivity = { ...activity, id: this.nextId++, createdAt: new Date() };
+    activities.push(newActivity);
+    await this.writeJsonFile('collections-activities.json', activities);
+    await this.saveIndex();
+    return newActivity;
+  }
+
+  // Forfeiture operations
+  async getForfeitures(filters: any): Promise<any[]> {
+    const forfeitures = await this.readJsonFile('forfeitures.json', []);
+    if (!filters) return forfeitures;
+    return forfeitures.filter((f: any) => {
+      if (filters.bondId && f.bondId !== filters.bondId) return false;
+      if (filters.clientId && f.clientId !== filters.clientId) return false;
+      if (filters.status && f.status !== filters.status) return false;
+      return true;
+    });
+  }
+
+  async createForfeiture(forfeiture: any): Promise<any> {
+    const forfeitures = await this.readJsonFile('forfeitures.json', []);
+    const newForfeiture = { ...forfeiture, id: this.nextId++, createdAt: new Date() };
+    forfeitures.push(newForfeiture);
+    await this.writeJsonFile('forfeitures.json', forfeitures);
+    await this.saveIndex();
+    return newForfeiture;
+  }
+
+  // User role operations
+  async getUserRoles(): Promise<any[]> {
+    return await this.readJsonFile('user-roles.json', []);
+  }
+
+  async createUserRole(role: any): Promise<any> {
+    const roles = await this.readJsonFile('user-roles.json', []);
+    const newRole = { ...role, id: this.nextId++, createdAt: new Date() };
+    roles.push(newRole);
+    await this.writeJsonFile('user-roles.json', roles);
+    await this.saveIndex();
+    return newRole;
+  }
+
+  // Data backup operations
+  async getDataBackups(): Promise<any[]> {
+    return await this.readJsonFile('data-backups.json', []);
+  }
+
+  async createDataBackup(backup: any): Promise<any> {
+    const backups = await this.readJsonFile('data-backups.json', []);
+    const newBackup = { ...backup, id: this.nextId++, createdAt: new Date() };
+    backups.push(newBackup);
+    await this.writeJsonFile('data-backups.json', backups);
+    await this.saveIndex();
+    return newBackup;
+  }
+
+  // Notification preference operations
+  async getUserNotificationPreferences(userId: string): Promise<any> {
+    const prefs = await this.readJsonFile('notification-preferences.json', []);
+    return prefs.find((p: any) => p.userId === userId) || {};
+  }
+
+  async upsertNotificationPreferences(preferences: any): Promise<any> {
+    const prefs = await this.readJsonFile('notification-preferences.json', []);
+    const existingIndex = prefs.findIndex((p: any) => p.userId === preferences.userId);
+
+    if (existingIndex >= 0) {
+      prefs[existingIndex] = { ...prefs[existingIndex], ...preferences, updatedAt: new Date() };
+      await this.writeJsonFile('notification-preferences.json', prefs);
+      return prefs[existingIndex];
+    } else {
+      const newPref = { ...preferences, id: this.nextId++, createdAt: new Date() };
+      prefs.push(newPref);
+      await this.writeJsonFile('notification-preferences.json', prefs);
+      await this.saveIndex();
+      return newPref;
+    }
+  }
+
+  async deleteNotification(id: number): Promise<void> {
+    const notifications = await this.readJsonFile(path.join(this.dataDir, 'notifications', 'notifications.json'), []);
+    const filtered = notifications.filter((n: any) => n.id !== id);
+    await this.writeJsonFile(path.join(this.dataDir, 'notifications', 'notifications.json'), filtered);
+  }
+
+  // Terms acknowledgment operations
+  async checkTermsAcknowledgment(userId: string): Promise<any> {
+    const acknowledgments = await this.readJsonFile('terms-acknowledgments.json', []);
+    return acknowledgments.find((a: any) => a.userId === userId) || null;
+  }
+
+  async acknowledgeTerms(acknowledgment: any): Promise<any> {
+    const acknowledgments = await this.readJsonFile('terms-acknowledgments.json', []);
+    const newAck = { ...acknowledgment, id: this.nextId++, createdAt: new Date() };
+    acknowledgments.push(newAck);
+    await this.writeJsonFile('terms-acknowledgments.json', acknowledgments);
+    await this.saveIndex();
+    return newAck;
+  }
+
+  // Client vehicle operations
+  async getClientVehicles(clientId: number): Promise<any[]> {
+    const vehicles = await this.readJsonFile('client-vehicles.json', []);
+    return vehicles.filter((v: any) => v.clientId === clientId);
+  }
+
+  async createClientVehicle(vehicle: any): Promise<any> {
+    const vehicles = await this.readJsonFile('client-vehicles.json', []);
+    const newVehicle = { ...vehicle, id: this.nextId++, createdAt: new Date() };
+    vehicles.push(newVehicle);
+    await this.writeJsonFile('client-vehicles.json', vehicles);
+    await this.saveIndex();
+    return newVehicle;
+  }
+
+  // Family member operations
+  async createFamilyMember(family: any): Promise<any> {
+    const members = await this.readJsonFile('family-members.json', []);
+    const newMember = { ...family, id: this.nextId++, createdAt: new Date() };
+    members.push(newMember);
+    await this.writeJsonFile('family-members.json', members);
+    await this.saveIndex();
+    return newMember;
+  }
+
+  // Employment info operations
+  async createEmploymentInfo(employment: any): Promise<any> {
+    const records = await this.readJsonFile('employment-info.json', []);
+    const newRecord = { ...employment, id: this.nextId++, createdAt: new Date() };
+    records.push(newRecord);
+    await this.writeJsonFile('employment-info.json', records);
+    await this.saveIndex();
+    return newRecord;
+  }
+
+  // Client files operations
+  async getClientFiles(clientId: number): Promise<any[]> {
+    const files = await this.readJsonFile('client-files.json', []);
+    return files.filter((f: any) => f.clientId === clientId);
+  }
+
+  // Court date reminder operations
+  async createCourtDateReminder(reminder: any): Promise<any> {
+    const reminders = await this.readJsonFile('court-date-reminders.json', []);
+    const newReminder = { ...reminder, id: this.nextId++, createdAt: new Date() };
+    reminders.push(newReminder);
+    await this.writeJsonFile('court-date-reminders.json', reminders);
+    await this.saveIndex();
+    return newReminder;
+  }
+
+  async getCourtDateReminders(): Promise<any[]> {
+    return await this.readJsonFile('court-date-reminders.json', []);
+  }
+
+  async acknowledgeReminder(reminderId: string): Promise<any> {
+    const reminders = await this.readJsonFile('court-date-reminders.json', []);
+    const reminderIndex = reminders.findIndex((r: any) => r.id === reminderId || r.id === parseInt(reminderId));
+    if (reminderIndex === -1) throw new Error('Reminder not found');
+
+    reminders[reminderIndex] = { ...reminders[reminderIndex], acknowledged: true, acknowledgedAt: new Date() };
+    await this.writeJsonFile('court-date-reminders.json', reminders);
+    return reminders[reminderIndex];
+  }
+
+  async getClientApprovedCourtDates(clientId: number): Promise<any[]> {
+    const courtDates = await this.readJsonFile('court-dates.json', []);
+    return courtDates.filter((cd: any) => cd.clientId === clientId && cd.approved);
+  }
+
+  // Privacy acknowledgment operations
+  async getPrivacyAcknowledgment(userId: string): Promise<any> {
+    const acknowledgments = await this.readJsonFile('privacy-acknowledgments.json', []);
+    return acknowledgments.find((a: any) => a.userId === userId) || null;
+  }
+
+  async createPrivacyAcknowledgment(acknowledgment: any): Promise<any> {
+    const acknowledgments = await this.readJsonFile('privacy-acknowledgments.json', []);
+    const newAck = { ...acknowledgment, id: this.nextId++, createdAt: new Date() };
+    acknowledgments.push(newAck);
+    await this.writeJsonFile('privacy-acknowledgments.json', acknowledgments);
+    await this.saveIndex();
+    return newAck;
+  }
+
+  // Client family and employment lookups
+  async getClientFamily(clientId: number): Promise<any[]> {
+    const members = await this.readJsonFile('family-members.json', []);
+    return members.filter((m: any) => m.clientId === clientId);
+  }
+
+  async getClientEmployment(clientId: number): Promise<any[]> {
+    const records = await this.readJsonFile('employment-info.json', []);
+    return records.filter((r: any) => r.clientId === clientId);
+  }
 }
 
 export const storage = new LocalFileStorage();

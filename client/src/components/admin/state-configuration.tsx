@@ -674,7 +674,7 @@ export function StateConfigurationManager({ companyId }: StateConfigurationManag
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Document template management coming soon...</p>
+              <p className="text-gray-600">No document templates configured</p>
             </CardContent>
           </Card>
         </TabsContent>

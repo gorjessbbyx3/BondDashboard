@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
 import BondForm from './bond-form';
 
 describe('BondForm', () => {
@@ -11,7 +17,6 @@ describe('BondForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
   it('renders the "Bond Amount *" label', () => {
@@ -71,22 +76,30 @@ describe('BondForm', () => {
     expect(screen.getByRole('button', { name: 'Creating Bond...' })).toBeInTheDocument();
   });
 
-  it('shows alert when submitting without bond amount', () => {
+  it('shows toast when submitting without bond amount', () => {
     render(<BondForm {...defaultProps} />);
 
     fireEvent.submit(screen.getByRole('button', { name: 'Submit Bond' }));
 
-    expect(window.alert).toHaveBeenCalledWith('Please enter a valid bond amount');
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Validation Error',
+      description: 'Please enter a valid bond amount',
+      variant: 'destructive',
+    }));
     expect(defaultProps.onSubmit).not.toHaveBeenCalled();
   });
 
-  it('shows alert when submitting with bond amount of 0', () => {
+  it('shows toast when submitting with bond amount of 0', () => {
     render(<BondForm {...defaultProps} />);
 
     fireEvent.change(screen.getByLabelText('Bond Amount *'), { target: { value: '0' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Submit Bond' }));
 
-    expect(window.alert).toHaveBeenCalledWith('Please enter a valid bond amount');
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Validation Error',
+      description: 'Please enter a valid bond amount',
+      variant: 'destructive',
+    }));
     expect(defaultProps.onSubmit).not.toHaveBeenCalled();
   });
 

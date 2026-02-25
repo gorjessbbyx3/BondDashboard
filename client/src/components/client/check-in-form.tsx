@@ -69,8 +69,6 @@ export function CheckInForm({ clientId }: CheckInFormProps) {
         form.setValue("location", locationString);
         setIsLoadingLocation(false);
         
-        // Log GPS accuracy for security audit
-        console.log(`GPS location captured with ${accuracy}m accuracy: ${locationString}`);
       },
       (error) => {
         let errorMessage = "GPS location is mandatory for check-in. ";
@@ -167,7 +165,6 @@ export function CheckInForm({ clientId }: CheckInFormProps) {
         }
         setIsCameraActive(false);
         
-        console.log("Facial verification captured for security verification");
         toast({
           title: "Facial Verification Complete",
           description: "Identity verification captured successfully.",
@@ -218,7 +215,6 @@ export function CheckInForm({ clientId }: CheckInFormProps) {
         form.setValue("biometricData", fingerprintData);
         form.setValue("biometricType", "fingerprint");
         
-        console.log("Fingerprint verification completed for security verification");
         toast({
           title: "Fingerprint Verification Complete",
           description: "Biometric identity verification successful.",

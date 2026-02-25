@@ -102,7 +102,7 @@ export function RecentArrestLogs() {
         body: JSON.stringify({
           arrestRecordId: selectedRecord?.id,
           ...contactData,
-          contactedBy: 'Current Admin' // Would get from auth context
+          contactedBy: 'Admin'
         })
       });
       return response.json();
